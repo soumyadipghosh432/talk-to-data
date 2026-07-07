@@ -1,0 +1,63 @@
+{
+  "database_tables": [
+    {
+      "table_name": "customers",
+      "description": "Stores customer profile data including their geographic region, email address, registration date, and status.",
+      "columns": [
+        {"name": "customer_id", "type": "INTEGER", "description": "Primary key index for customers."},
+        {"name": "first_name", "type": "VARCHAR", "description": "First name of the customer."},
+        {"name": "last_name", "type": "VARCHAR", "description": "Last name of the customer."},
+        {"name": "email", "type": "VARCHAR", "description": "Unique email address of the customer."},
+        {"name": "geographic_region", "type": "VARCHAR", "description": "Global region of the customer (e.g. 'US', 'EMEA', 'APAC'). Use this for geographic filters."},
+        {"name": "registration_date", "type": "DATE", "description": "Date customer registered in the system."},
+        {"name": "status", "type": "VARCHAR", "description": "Account status (e.g. 'Active', 'Inactive')."}
+      ]
+    },
+    {
+      "table_name": "products",
+      "description": "Stores list of available products, their pricing, stock quantity, and category.",
+      "columns": [
+        {"name": "product_id", "type": "INTEGER", "description": "Primary key index for products."},
+        {"name": "product_name", "type": "VARCHAR", "description": "Name of the product."},
+        {"name": "category", "type": "VARCHAR", "description": "Product category (e.g. 'Electronics', 'Apparel', 'Home Office', 'Fitness & Outdoors')."},
+        {"name": "price", "type": "NUMERIC", "description": "Unit selling price of the product."},
+        {"name": "stock_quantity", "type": "INTEGER", "description": "Available inventory in stock."}
+      ]
+    },
+    {
+      "table_name": "orders",
+      "description": "Stores individual transactions, invoice balances, transaction dates, and region codes.",
+      "columns": [
+        {"name": "order_id", "type": "INTEGER", "description": "Primary structural identity index key for orders."},
+        {"name": "customer_id", "type": "INTEGER", "description": "Foreign key referencing customers.customer_id."},
+        {"name": "order_date", "type": "TIMESTAMP WITH TIME ZONE", "description": "Timestamp when the order was placed."},
+        {"name": "status", "type": "VARCHAR", "description": "Order processing status (e.g. 'Completed', 'Pending', 'Cancelled')."},
+        {"name": "geographic_region", "type": "VARCHAR", "description": "Global distribution territory value for the order (e.g., 'US', 'EMEA', 'APAC'). Use this for order region filtering."},
+        {"name": "total_amount", "type": "NUMERIC", "description": "Net transactional value calculated for the completed order processing."}
+      ]
+    },
+    {
+      "table_name": "order_items",
+      "description": "Stores line-item details for each order, linking products and quantities.",
+      "columns": [
+        {"name": "order_item_id", "type": "INTEGER", "description": "Primary key for order line items."},
+        {"name": "order_id", "type": "INTEGER", "description": "Foreign key referencing orders.order_id."},
+        {"name": "product_id", "type": "INTEGER", "description": "Foreign key referencing products.product_id."},
+        {"name": "quantity", "type": "INTEGER", "description": "Quantity of the product purchased."},
+        {"name": "unit_price", "type": "NUMERIC", "description": "Price per unit at the time of purchase."}
+      ]
+    },
+    {
+      "table_name": "reviews",
+      "description": "Stores customer product reviews and numerical rating scores (1-5 scale).",
+      "columns": [
+        {"name": "review_id", "type": "INTEGER", "description": "Primary key index for product reviews."},
+        {"name": "product_id", "type": "INTEGER", "description": "Foreign key referencing products.product_id."},
+        {"name": "customer_id", "type": "INTEGER", "description": "Foreign key referencing customers.customer_id."},
+        {"name": "rating", "type": "INTEGER", "description": "Numerical feedback score from 1 to 5 (inclusive)."},
+        {"name": "review_text", "type": "TEXT", "description": "Text content of the customer's review comment."},
+        {"name": "review_date", "type": "DATE", "description": "Date the review was written."}
+      ]
+    }
+  ]
+}
