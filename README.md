@@ -139,3 +139,51 @@ To switch Google Gemini models or transition between providers:
    * **`gemini-2.5-flash`** (Free tier limit: 20 queries/day).
    * **`gemini-2.0-flash`** (Free tier limit: 0 unless Google Cloud billing is linked).
 4. Restart the FastAPI backend process to reload changes.
+
+---
+
+## 🌐 Transitioning to Production (AWS RDS PostgreSQL)
+
+To move from a local PostgreSQL database to a managed cloud database like **AWS RDS**, perform the following adjustments:
+
+### 1. Update Connection String in `.env`
+Update the `DATABASE_URL` parameter in your backend `.env` configuration file to point to the RDS endpoint instead of `localhost`:
+```env
+# Format: postgresql://<db_user>:<db_password>@<rds_endpoint_address>:<port>/<db_name>
+DATABASE_URL=postgresql://db_admin:strongpassword@talk-to-data-db.crw378y.us-east-1.rds.amazonaws.com:5432/production_db
+```
+
+### 2. Configure AWS Network Security & Security Groups
+By default, AWS RDS instances block all incoming external traffic.
+* **Inbound Rules**: You must modify the **RDS Security Group** to add an Inbound Rule allowing TCP traffic on port `5432`.
+* **Traffic Scoping**: For security, restrict source traffic strictly to the security group of your application server (EC2 instance, ECS container, or Elastic Beanstalk subnet) rather than opening it to the public (`0.0.0.0/0`).
+* **Developer Access**: If you need to seed the database or debug from a local machine, add your local workstation's public IP address as an allowed source temporarily.
+
+### 3. Enable SSL Connections
+Production cloud databases should encrypt all traffic in transit.
+* Append `?sslmode=require` to the database URL inside your `.env`:
+  ```env
+  DATABASE_URL=postgresql://db_admin:strongpassword@talk-to-data-db.crw378y.us-east-1.rds.amazonaws.com:5432/production_db?sslmode=require
+  ```
+* In `backend/app/database.py`, our engine configuration is already configured to support connection pre-pings and pooling which handles AWS RDS connection drops:
+  ```python
+  engine = create_engine(
+      settings.DATABASE_URL,
+      pool_pre_ping=True, # Automatically checks if connection is alive and reconnects
+      pool_size=10,       # Keeps a pool of active connection channels
+      max_overflow=20     # Max excess connection spike handling
+  )
+  ```
+
+### 4. Initialize Database Schema & Seed Data on RDS
+Because the RDS PostgreSQL database starts empty, run the SQL initialization file and the seeding script from a machine that has network access to the RDS instance:
+1. Initialize tables:
+   ```bash
+   psql -h talk-to-data-db.crw378y.us-east-1.rds.amazonaws.com -U db_admin -d production_db -f init.sql
+   ```
+2. Seed sample records and rules:
+   Update `.env` temporarily on your computer with the RDS connection string, make sure your IP is authorized in the RDS Security Group, then run:
+   ```bash
+   python seed_data.py
+   ```
+
