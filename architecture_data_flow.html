@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talk-to-Data | System Architecture & Data Flow Diagram</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0F172A;
+            --bg-card: #1E293B;
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --accent-primary: #38BDF8;
+            --accent-success: #34D399;
+            --accent-warning: #F59E0B;
+            --accent-danger: #F87171;
+            --border-color: #334155;
+            --font-main: 'Outfit', sans-serif;
+            --font-code: 'Roboto Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--accent-primary);
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 16px;
+            margin-top: 8px;
+        }
+
+        .diagram-container {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            margin-bottom: 40px;
+            overflow-x: auto;
+            text-align: center;
+        }
+
+        .diagram-container svg {
+            max-width: 100%;
+            height: auto;
+            display: inline-block;
+        }
+
+        .section-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+            gap: 30px;
+        }
+
+        .info-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .info-card h2 {
+            font-size: 20px;
+            color: var(--accent-primary);
+            margin-bottom: 16px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-card h2::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 18px;
+            background-color: var(--accent-primary);
+            border-radius: 4px;
+        }
+
+        .info-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-card li {
+            margin-bottom: 12px;
+            position: relative;
+            padding-left: 20px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .info-card li::before {
+            content: '✦';
+            position: absolute;
+            left: 0;
+            color: var(--accent-primary);
+        }
+
+        .info-card b {
+            color: var(--text-primary);
+        }
+
+        .code-block {
+            font-family: var(--font-code);
+            background-color: #0B0F19;
+            color: #E2E8F0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Talk-to-Data System Architecture</h1>
+        <p>Enterprise AI-Powered BI Chatbot Architecture & Data Flow Reference Map</p>
+    </header>
+
+    <!-- Vector SVG Diagram Card -->
+    <div class="diagram-container">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 580" width="1000" height="580">
+            <!-- Definitions for Gradients -->
+            <defs>
+                <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#0284C7" />
+                    <stop offset="100%" stop-color="#0369A1" />
+                </linearGradient>
+                <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#7C3AED" />
+                    <stop offset="100%" stop-color="#6D28D9" />
+                </linearGradient>
+                <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#059669" />
+                    <stop offset="100%" stop-color="#047857" />
+                </linearGradient>
+                <linearGradient id="slateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#475569" />
+                    <stop offset="100%" stop-color="#334155" />
+                </linearGradient>
+                <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#D97706" />
+                    <stop offset="100%" stop-color="#B45309" />
+                </linearGradient>
+            </defs>
+
+            <!-- Background grid lines (subtle) -->
+            <path d="M 0,100 L 1000,100 M 0,200 L 1000,200 M 0,300 L 1000,300 M 0,400 L 1000,400 M 0,500 L 1000,500" stroke="#1E293B" stroke-width="1" />
+            <path d="M 200,0 L 200,580 M 400,0 L 400,580 M 600,0 L 600,580 M 800,0 L 800,580" stroke="#1E293B" stroke-width="1" />
+
+            <!-- Core Group 1: React Client -->
+            <rect x="20" y="80" width="180" height="380" rx="10" fill="url(#blueGrad)" stroke="#38BDF8" stroke-width="2" />
+            <text x="110" y="115" text-anchor="middle" fill="#FFFFFF" font-family="'Outfit', sans-serif" font-size="16" font-weight="bold">React Frontend SPA</text>
+            
+            <rect x="35" y="140" width="150" height="60" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="110" y="165" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="12" font-weight="bold">Authentication Interface</text>
+            <text x="110" y="182" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="10">Split Login / Register</text>
+
+            <rect x="35" y="220" width="150" height="65" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="110" y="245" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="12" font-weight="bold">Interactive Chat Dock</text>
+            <text x="110" y="260" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="10">Chat History Sidebar</text>
+            <text x="110" y="272" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="10">PDF Export Trigger</text>
+
+            <rect x="35" y="305" width="150" height="60" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="110" y="330" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="12" font-weight="bold">Admin Control Portal</text>
+            <text x="110" y="347" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="10">RBAC mappings</text>
+
+            <rect x="35" y="380" width="150" height="60" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="110" y="405" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="12" font-weight="bold">KPI Analytics View</text>
+            <text x="110" y="422" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="10">Throughput, Latency, SQL Logs</text>
+
+            <!-- Flow arrow 1: HTTP requests via JWT -->
+            <path d="M 200,200 L 260,200" stroke="#38BDF8" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+            <text x="230" y="190" text-anchor="middle" fill="#38BDF8" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold">JWT Cookie</text>
+
+            <!-- Core Group 2: FastAPI Backend -->
+            <rect x="260" y="50" width="190" height="420" rx="10" fill="url(#purpleGrad)" stroke="#C084FC" stroke-width="2" />
+            <text x="355" y="85" text-anchor="middle" fill="#FFFFFF" font-family="'Outfit', sans-serif" font-size="16" font-weight="bold">FastAPI Gateway</text>
+
+            <rect x="275" y="110" width="160" height="50" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="355" y="130" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="11" font-weight="bold">Session & Auth Handler</text>
+            <text x="355" y="145" text-anchor="middle" fill="#A855F7" font-family="'Outfit', sans-serif" font-size="9">Cookie validation / User Elevation</text>
+
+            <rect x="275" y="175" width="160" height="50" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="355" y="195" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="11" font-weight="bold">Chat Router Endpoint</text>
+            <text x="355" y="210" text-anchor="middle" fill="#A855F7" font-family="'Outfit', sans-serif" font-size="9">/api/v1/chat/message</text>
+
+            <rect x="275" y="240" width="160" height="50" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="355" y="260" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="11" font-weight="bold">Admin Panel endpoints</text>
+            <text x="355" y="275" text-anchor="middle" fill="#A855F7" font-family="'Outfit', sans-serif" font-size="9">Users directory / Role assignment</text>
+
+            <rect x="275" y="305" width="160" height="50" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="355" y="325" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="11" font-weight="bold">PDF Export Engine</text>
+            <text x="355" y="340" text-anchor="middle" fill="#A855F7" font-family="'Outfit', sans-serif" font-size="9">ReportLab Document stream</text>
+
+            <rect x="275" y="370" width="160" height="80" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="355" y="390" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="11" font-weight="bold">Analytics Compiler</text>
+            <text x="355" y="405" text-anchor="middle" fill="#A855F7" font-family="'Outfit', sans-serif" font-size="9">/admin/analytics API</text>
+            <text x="355" y="420" text-anchor="middle" fill="#A855F7" font-family="'Outfit', sans-serif" font-size="9">SQL aggregate builder</text>
+
+            <!-- Flow arrow 2: To LangGraph workflow -->
+            <path d="M 450,200 L 510,200" stroke="#C084FC" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+            <text x="480" y="190" text-anchor="middle" fill="#C084FC" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold">Orchestrate</text>
+
+            <!-- Core Group 3: LangGraph Pipeline -->
+            <rect x="510" y="20" width="220" height="490" rx="10" fill="url(#slateGrad)" stroke="#94A3B8" stroke-width="2" />
+            <text x="620" y="55" text-anchor="middle" fill="#FFFFFF" font-family="'Outfit', sans-serif" font-size="15" font-weight="bold">LangGraph Agent Nodes</text>
+
+            <rect x="525" y="80" width="190" height="45" rx="5" fill="#1E293B" stroke="#475569" />
+            <text x="620" y="98" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold">Node 1: Guardrail Inspection</text>
+            <text x="620" y="112" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="8">Checks scope using memory history</text>
+
+            <rect x="525" y="135" width="190" height="45" rx="5" fill="#1E293B" stroke="#475569" />
+            <text x="620" y="153" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold">Node 2: RBAC Prompt Injector</text>
+            <text x="620" y="167" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="8">Injects row filters e.g. region='US'</text>
+
+            <rect x="525" y="190" width="190" height="50" rx="5" fill="#1E293B" stroke="#475569" />
+            <text x="620" y="208" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold">Node 3: Text-to-SQL Generator</text>
+            <text x="620" y="222" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="8">Dynamic YAML Gemini selection</text>
+            <text x="620" y="232" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="8">Ordinal alignment rules</text>
+
+            <rect x="525" y="250" width="190" height="45" rx="5" fill="#1E293B" stroke="#475569" />
+            <text x="620" y="268" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold">Node 4: SQL Strict Validator</text>
+            <text x="620" y="282" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="8">SELECT-only check / Sanitization</text>
+
+            <rect x="525" y="305" width="190" height="45" rx="5" fill="#1E293B" stroke="#475569" />
+            <text x="620" y="323" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold">Node 5: SQLAlchemy DB Exec</text>
+            <text x="620" y="337" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="8">Runs on connection pool / returns rows</text>
+
+            <rect x="525" y="360" width="190" height="45" rx="5" fill="#1E293B" stroke="#475569" />
+            <text x="620" y="378" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold">Node 6: AI Synthesis Node</text>
+            <text x="620" y="392" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="8">No greetings / hide raw SQL from text</text>
+
+            <rect x="525" y="415" width="190" height="60" rx="5" fill="#1E293B" stroke="#475569" />
+            <text x="620" y="433" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold">Node 7: Telemetry Logger</text>
+            <text x="620" y="447" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="8">Computes Throughput (TPS)</text>
+            <text x="620" y="457" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="8">Saves token counts & latency</text>
+
+            <!-- Flow arrow 3: SQL to database -->
+            <path d="M 730,320 L 790,320" stroke="#94A3B8" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+            <text x="760" y="310" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="10" font-weight="bold">SQL Query</text>
+
+            <!-- Core Group 4: DB -->
+            <rect x="800" y="80" width="170" height="380" rx="10" fill="url(#greenGrad)" stroke="#34D399" stroke-width="2" />
+            <text x="885" y="115" text-anchor="middle" fill="#FFFFFF" font-family="'Outfit', sans-serif" font-size="16" font-weight="bold">PostgreSQL DB</text>
+
+            <rect x="815" y="140" width="140" height="50" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="885" y="160" text-anchor="middle" fill="#34D399" font-family="'Outfit', sans-serif" font-size="11" font-weight="bold">Users & Mappings</text>
+            <text x="885" y="175" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="8">RBAC Users / Roles / Rules</text>
+
+            <rect x="815" y="200" width="140" height="50" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="885" y="220" text-anchor="middle" fill="#34D399" font-family="'Outfit', sans-serif" font-size="11" font-weight="bold">Chat Hist & Feedback</text>
+            <text x="885" y="235" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="8">Saves messages & ratings</text>
+
+            <rect x="815" y="260" width="140" height="50" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="885" y="280" text-anchor="middle" fill="#34D399" font-family="'Outfit', sans-serif" font-size="11" font-weight="bold">Execution telemetry</text>
+            <text x="885" y="295" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="8">execution_log table</text>
+
+            <rect x="815" y="320" width="140" height="120" rx="6" fill="#0F172A" opacity="0.6" />
+            <text x="885" y="340" text-anchor="middle" fill="#E2E8F0" font-family="'Outfit', sans-serif" font-size="11" font-weight="bold">Business Metrics</text>
+            <text x="885" y="360" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="9">- customers (70)</text>
+            <text x="885" y="375" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="9">- products (51)</text>
+            <text x="885" y="390" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="9">- orders (85)</text>
+            <text x="885" y="405" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="9">- order_items (100+)</text>
+            <text x="885" y="420" text-anchor="middle" fill="#94A3B8" font-family="'Outfit', sans-serif" font-size="9">- product_reviews</text>
+
+            <!-- Flow arrow: db response back to graph -->
+            <path d="M 790,340 L 730,340" stroke="#34D399" stroke-width="2" stroke-dasharray="4,4" fill="none" marker-end="url(#arrow)" />
+            <text x="760" y="355" text-anchor="middle" fill="#34D399" font-family="'Outfit', sans-serif" font-size="9">Row Data</text>
+
+            <!-- Marker for Arrows -->
+            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="context-stroke" />
+            </marker>
+        </svg>
+    </div>
+
+    <!-- Details description grids -->
+    <div class="section-grid">
+        <!-- Card 1: Auth & User Onboarding Flow -->
+        <div class="info-card">
+            <h2>Authentication & Onboarding Flow</h2>
+            <ul>
+                <li><b>Client Submission:</b> The login page splits register/login forms, submitting values to backend endpoints <span class="code-block">POST /api/v1/auth/register</span> and <span class="code-block">POST /api/v1/auth/login</span>.</li>
+                <li><b>Cryptographic Hashing:</b> Passwords are encrypted using bcrypt hashing protocols. Safe fallback configurations accommodate SSO integrations (nullable passwords).</li>
+                <li><b>Stateless Token Emission:</b> A verified login issues a signed JWT token stored inside a secure <span class="code-block">HttpOnly</span>, <span class="code-block">SameSite=Lax</span> cookie. No token is readable via Javascript, neutralizing XSS hijacking.</li>
+                <li><b>RBAC Access Restrictor:</b> FastAPI routes extract the cookie session, validating permissions and mapping users to respective database roles and geographic restriction criteria.</li>
+            </ul>
+        </div>
+
+        <!-- Card 2: LangGraph BI Pipeline Flow -->
+        <div class="info-card">
+            <h2>LangGraph Execution Workflow</h2>
+            <ul>
+                <li><b>Query Submission:</b> The user submits queries to <span class="code-block">POST /api/v1/chat/message</span>. The backend instantiates a state graph pipeline.</li>
+                <li><b>Node 1 (Guardrails):</b> Evaluates scope by reading the current prompt and conversational history, blocking irrelevant queries.</li>
+                <li><b>Node 2 (RBAC Policy Injection):</b> Retrieves the user's registered rules (e.g. <span class="code-block">geographic_region = 'US'</span>) and appends them as system rules.</li>
+                <li><b>Node 3 (Text-to-SQL):</b> Compiles target schemas and history, generating standard PostgreSQL statements based on the yaml selection.</li>
+                <li><b>Node 4 (SQL Validation):</b> Screens query blocks, strictly enforcing <span class="code-block">SELECT</span> statements and blocking database modification syntax.</li>
+                <li><b>Node 5 & Node 6 (DB Execution & Synthesis):</b> Runs database query execution on connection pools and formats the output into clean summaries.</li>
+            </ul>
+        </div>
+
+        <!-- Card 3: Metrics & Operational Telemetry -->
+        <div class="info-card">
+            <h2>Telemetry Collection & Aggregations</h2>
+            <ul>
+                <li><b>Prompt & Completion Tracking:</b> Captures precise token usage from Google Gemini generative outputs for every query transaction.</li>
+                <li><b>Latency Calculations:</b> Measures round-trip duration from initial client endpoint connection to session closure in milliseconds, representing it in decimal seconds (`s`) in the client browser.</li>
+                <li><b>TPS Throughput Calculations:</b> Calculates throughput using the formula: <span class="code-block">total_tokens / latency_seconds</span>.</li>
+                <li><b>Telemetry Storage:</b> Saves all computed metrics, active provider configurations, and SQL blocks into the database table <span class="code-block">execution_log</span>.</li>
+            </ul>
+        </div>
+
+        <!-- Card 4: Performance Analytics Dashboard -->
+        <div class="info-card">
+            <h2>Performance Analytics Dashboard</h2>
+            <ul>
+                <li><b>Admin Analytics Route:</b> Features a secure, admin-only endpoint <span class="code-block">GET /api/v1/admin/analytics</span> that performs aggregate reads on telemetry logs.</li>
+                <li><b>DB Scalar Aggregations:</b> Computes metrics (total queries, failures, average latency, and average throughput) using efficient, raw SQL database operations: <span class="code-block">db.execute(text(...)).scalar()</span>.</li>
+                <li><b>UI Grid Representation:</b> Renders KPI cards and status badges at the top of the admin page, showing success, SQL failures, and guardrail denies.</li>
+                <li><b>Telemetry Logs Table:</b> Renders a logs viewport displaying the last 10 execution query details (timestamps, latency, token count, and the exact generated SQL query).</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer>
+        <p>Talk-to-Data Architecture Manual &copy; 2026 Production Readiness Handbook. All rights reserved.</p>
+    </footer>
+</div>
+
+</body>
+</html>

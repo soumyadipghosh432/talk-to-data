@@ -1,0 +1,12 @@
+⏱️ Project Duration Summary
+Total Elapsed Time: 47.30 hours (from first command launch on July 7 to session finalization on July 9)
+Actual Working Time: 1.65 hours (99.2 minutes)
+Idle Time: 45.65 hours (e.g., overnight suspensions and waiting intervals)
+
+🪙 Model Token Usage
+Total Agent LLM Calls: 269
+Total Tool Calls Executed: 230
+Input Tokens (Prompts): 11,249,346
+Output Tokens (Responses): 17,055
+Total Tokens Consumed: 11,266,401
+Note: The high input token count is a result of the agentic LangGraph workflow dynamically accumulating workspace files and history context across 269 distinct model invocation turns.
