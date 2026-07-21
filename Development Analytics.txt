@@ -10,3 +10,10 @@ Input Tokens (Prompts): 11,249,346
 Output Tokens (Responses): 17,055
 Total Tokens Consumed: 11,266,401
 Note: The high input token count is a result of the agentic LangGraph workflow dynamically accumulating workspace files and history context across 269 distinct model invocation turns.
+
+
+Cost :
+Work time = 2 hours = 2 * $25 = $50
+Token cost = (11.25 * $1.5) + (0.017 * $9) = $17.02
+Subcription cost = $20
+Total = $ 87
