@@ -156,6 +156,15 @@ export default function App() {
   const [adminError, setAdminError] = useState('');
   const [adminSuccess, setAdminSuccess] = useState('');
   const [adminAnalytics, setAdminAnalytics] = useState(null);
+  const [adminSchema, setAdminSchema] = useState(null);
+  const [activeAdminTab, setActiveAdminTab] = useState('analytics'); // 'analytics', 'rbac', 'model'
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [roleSearchQuery, setRoleSearchQuery] = useState('');
+  const [logsPage, setLogsPage] = useState(1);
+  const [userDirectoryPage, setUserDirectoryPage] = useState(1);
 
   const messagesEndRef = useRef(null);
 
@@ -438,9 +447,99 @@ export default function App() {
       res = await fetch(`${API_BASE}/admin/analytics`, { credentials: 'include' });
       if (res.ok) setAdminAnalytics(await res.json());
 
+      // 5. Fetch Schema
+      res = await fetch(`${API_BASE}/admin/schema`, { credentials: 'include' });
+      if (res.ok) setAdminSchema(await res.json());
+
     } catch (e) {
       setAdminError('Failed to fetch admin dashboard directory logs.');
     }
+  };
+
+  const handleExportLogsCSV = () => {
+    if (!adminAnalytics || !adminAnalytics.recent_logs || !adminAnalytics.recent_logs.length) return;
+    
+    const headers = ["Log ID", "Recorded At", "Status", "Latency (s)", "Tokens", "Throughput (tps)", "SQL"];
+    const rows = adminAnalytics.recent_logs.map(log => [
+      log.log_id,
+      `"${new Date(log.recorded_at).toLocaleString().replace(/"/g, '""')}"`,
+      log.status,
+      (log.latency_ms / 1000).toFixed(2),
+      log.total_tokens,
+      log.throughput,
+      `"${(log.sql || '').replace(/"/g, '""')}"`
+    ]);
+    
+    const csvString = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `talk_to_data_telemetry_logs_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Mouse Drag-to-Pan Handlers for ER Diagram
+  const handleERMouseDown = (e) => {
+    if (e.button !== 0) return; // Only left click dragging
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleERMouseMove = (e) => {
+    if (!isDragging) return;
+    setPan({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y
+    });
+  };
+
+  const handleERMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const getFilteredColumns = (table) => {
+    return (table.columns || []).filter(col => {
+      const desc = (col.description || '').toLowerCase();
+      const name = (col.name || '').toLowerCase();
+      const isPK = name.endsWith('_id') && (desc.includes('primary') || desc.includes('identity'));
+      const isFK = desc.includes('foreign key referencing');
+      return isPK || isFK;
+    }).map(col => {
+      const desc = (col.description || '').toLowerCase();
+      const isPK = col.name.endsWith('_id') && (desc.includes('primary') || desc.includes('identity'));
+      return {
+        name: col.name,
+        type: col.type,
+        isPK,
+        isFK: !isPK
+      };
+    });
+  };
+
+  const getERRelationships = (tables) => {
+    const edges = [];
+    tables.forEach(table => {
+      (table.columns || []).forEach(col => {
+        const desc = col.description || '';
+        if (desc.toLowerCase().includes('foreign key referencing')) {
+          const match = desc.match(/referencing\s+([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)/i);
+          if (match) {
+            edges.push({
+              sourceTable: table.table_name,
+              sourceCol: col.name,
+              targetTable: match[1],
+              targetCol: match[2]
+            });
+          }
+        }
+      });
+    });
+    return edges;
   };
 
   const handleCreateRole = async (e) => {
@@ -948,7 +1047,61 @@ export default function App() {
             </div>
           </div>
 
-          {/* Analytics Dashboard Grid */}
+          {/* Sub-Tabs Selector */}
+          <div className="admin-tabs" style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-color)', margin: '20px 0 10px 0', paddingBottom: '0' }}>
+            <button 
+              className={`admin-tab-btn ${activeAdminTab === 'analytics' ? 'active' : ''}`}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderBottom: activeAdminTab === 'analytics' ? '2px solid var(--btn-primary, #2563eb)' : '2px solid transparent',
+                padding: '8px 16px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                color: activeAdminTab === 'analytics' ? 'var(--text-primary)' : 'grey',
+                fontSize: '14px'
+              }}
+              onClick={() => setActiveAdminTab('analytics')}
+            >
+              Analytics Dashboard
+            </button>
+            <button 
+              className={`admin-tab-btn ${activeAdminTab === 'rbac' ? 'active' : ''}`}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderBottom: activeAdminTab === 'rbac' ? '2px solid var(--btn-primary, #2563eb)' : '2px solid transparent',
+                padding: '8px 16px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                color: activeAdminTab === 'rbac' ? 'var(--text-primary)' : 'grey',
+                fontSize: '14px'
+              }}
+              onClick={() => setActiveAdminTab('rbac')}
+            >
+              RBAC Settings
+            </button>
+            <button 
+              className={`admin-tab-btn ${activeAdminTab === 'model' ? 'active' : ''}`}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderBottom: activeAdminTab === 'model' ? '2px solid var(--btn-primary, #2563eb)' : '2px solid transparent',
+                padding: '8px 16px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                color: activeAdminTab === 'model' ? 'var(--text-primary)' : 'grey',
+                fontSize: '14px'
+              }}
+              onClick={() => setActiveAdminTab('model')}
+            >
+              Data Model View
+            </button>
+          </div>
+
+          {activeAdminTab === 'analytics' && (
+            <>
+              {/* Analytics Dashboard Grid */}
           {adminAnalytics && (
             <div style={{ marginTop: '20px' }}>
               <h3 style={{ marginBottom: '10px', fontSize: '15px', fontWeight: '600' }}>System Performance Analytics</h3>
@@ -982,7 +1135,16 @@ export default function App() {
 
               {/* Recent Execution Logs */}
               <div className="admin-card" style={{ marginBottom: '20px' }}>
-                <h3 className="admin-card-title">Recent Query Execution Logs</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3 className="admin-card-title" style={{ margin: '0' }}>Recent Query Execution Logs</h3>
+                  <button 
+                    className="btn-secondary" 
+                    onClick={handleExportLogsCSV}
+                    style={{ padding: '6px 12px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    📥 Export (CSV)
+                  </button>
+                </div>
                 <div className="table-container">
                   <table>
                      <thead>
@@ -997,7 +1159,7 @@ export default function App() {
                        </tr>
                      </thead>
                      <tbody>
-                       {adminAnalytics.recent_logs.map((log) => (
+                       {adminAnalytics.recent_logs.slice((logsPage - 1) * 20, logsPage * 20).map((log) => (
                          <tr key={log.log_id}>
                            <td>{log.log_id}</td>
                            <td>{new Date(log.recorded_at).toLocaleString()}</td>
@@ -1033,14 +1195,59 @@ export default function App() {
                      </tbody>
                   </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {adminAnalytics.recent_logs.length > 20 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                    <button 
+                      className="btn-secondary" 
+                      style={{ padding: '4px 10px', fontSize: '12px' }}
+                      disabled={logsPage === 1}
+                      onClick={() => setLogsPage(p => p - 1)}
+                    >
+                      ◀ Previous
+                    </button>
+                    <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: '500' }}>
+                      Page {logsPage} of {Math.ceil(adminAnalytics.recent_logs.length / 20)}
+                    </span>
+                    <button 
+                      className="btn-secondary" 
+                      style={{ padding: '4px 10px', fontSize: '12px' }}
+                      disabled={logsPage >= Math.ceil(adminAnalytics.recent_logs.length / 20)}
+                      onClick={() => setLogsPage(p => p + 1)}
+                    >
+                      Next ▶
+                    </button>
+                  </div>
+                )}
+
+                {/* Direct DB Extract Information Notice */}
+                <div style={{
+                  marginTop: '16px',
+                  padding: '10px 14px',
+                  borderRadius: '6px',
+                  borderLeft: '4px solid var(--btn-primary, #2563eb)',
+                  backgroundColor: 'var(--bg-canvas, #F9FAFB)',
+                  fontSize: '12px',
+                  color: 'grey'
+                }}>
+                  ℹ️ To extract the full system query telemetry history beyond this 200-row view, query the backend database directly using:
+                  <code style={{ display: 'block', marginTop: '6px', padding: '6px 10px', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px', border: '1px solid var(--border-color)', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                    SELECT * FROM execution_log ORDER BY recorded_at DESC;
+                  </code>
+                </div>
               </div>
             </div>
           )}
+          </>
+        )}
 
-          {adminError && <div className="auth-error-banner">{adminError}</div>}
-          {adminSuccess && <div className="auth-error-banner" style={{backgroundColor: '#E8F5E9', color: '#2E7D32', borderColor: '#C8E6C9'}}>{adminSuccess}</div>}
+        {activeAdminTab === 'rbac' && (
+          <>
+            {adminError && <div className="auth-error-banner">{adminError}</div>}
+            {adminSuccess && <div className="auth-error-banner" style={{backgroundColor: '#E8F5E9', color: '#2E7D32', borderColor: '#C8E6C9'}}>{adminSuccess}</div>}
 
-          {/* User List & Elevation Card */}
+            {/* User List & Elevation Card */}
           <div className="admin-card">
             <h3 className="admin-card-title">User Directory</h3>
             <div className="table-container">
@@ -1056,61 +1263,86 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {adminUsers.map((u) => (
-                    <tr key={u.user_id}>
-                      <td>{u.user_id}</td>
-                      <td><b>{u.user_name}</b></td>
-                      <td>
-                        <span className={`admin-badge ${u.access_type.toLowerCase()}`}>
-                          {u.access_type}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {u.roles.map(r => (
-                            <span 
-                              key={r.role_id} 
-                              style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid #ddd', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                            >
-                              {r.role_name}
-                              <button 
-                                style={{ border: 'none', background: 'transparent', color: 'grey', cursor: 'pointer', fontWeight: 'bold' }}
-                                onClick={() => handleUnmapUserRole(u.user_id, r.role_id)}
-                              >
-                                &times;
-                              </button>
-                            </span>
-                          ))}
-                          {u.roles.length === 0 && <span style={{color: 'grey', fontSize: '12px'}}>None</span>}
-                        </div>
-                      </td>
-                      <td>{new Date(u.created_at).toLocaleDateString()}</td>
-                      <td className="admin-actions-cell">
-                        {u.access_type === 'User' ? (
-                          <button 
-                            className="admin-action-btn-sm" 
-                            style={{color: '#1565C0'}}
-                            onClick={() => handleElevateUser(u.user_id, 'Admin')}
-                          >
-                            Promote to Admin
-                          </button>
-                        ) : (
-                          <button 
-                            className="admin-action-btn-sm" 
-                            style={{color: '#D32F2F'}}
-                            onClick={() => handleElevateUser(u.user_id, 'User')}
-                            disabled={u.user_name === user.username} // Prevents self-demotion
-                          >
-                            Demote to User
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                   {adminUsers.slice((userDirectoryPage - 1) * 20, userDirectoryPage * 20).map((u) => (
+                     <tr key={u.user_id}>
+                       <td>{u.user_id}</td>
+                       <td><b>{u.user_name}</b></td>
+                       <td>
+                         <span className={`admin-badge ${u.access_type.toLowerCase()}`}>
+                           {u.access_type}
+                         </span>
+                       </td>
+                       <td>
+                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                           {u.roles.map(r => (
+                             <span 
+                               key={r.role_id} 
+                               style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid #ddd', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                             >
+                               {r.role_name}
+                               <button 
+                                 style={{ border: 'none', background: 'transparent', color: 'grey', cursor: 'pointer', fontWeight: 'bold' }}
+                                 onClick={() => handleUnmapUserRole(u.user_id, r.role_id)}
+                               >
+                                 &times;
+                               </button>
+                             </span>
+                           ))}
+                           {u.roles.length === 0 && <span style={{color: 'grey', fontSize: '12px'}}>None</span>}
+                         </div>
+                       </td>
+                       <td>{new Date(u.created_at).toLocaleDateString()}</td>
+                       <td className="admin-actions-cell">
+                         {u.access_type === 'User' ? (
+                           <button 
+                             className="admin-action-btn-sm" 
+                             style={{color: '#1565C0'}}
+                             onClick={() => handleElevateUser(u.user_id, 'Admin')}
+                           >
+                             Promote to Admin
+                           </button>
+                         ) : (
+                           <button 
+                             className="admin-action-btn-sm" 
+                             style={{color: '#D32F2F'}}
+                             onClick={() => handleElevateUser(u.user_id, 'User')}
+                             disabled={u.user_name === user.username} // Prevents self-demotion
+                           >
+                             Demote to User
+                           </button>
+                         )}
+                       </td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+             </div>
+
+             {/* User Directory Pagination Controls */}
+             {adminUsers.length > 20 && (
+               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                 <button 
+                   className="btn-secondary" 
+                   style={{ padding: '4px 10px', fontSize: '12px' }}
+                   disabled={userDirectoryPage === 1}
+                   onClick={() => setUserDirectoryPage(p => p - 1)}
+                 >
+                   ◀ Previous
+                 </button>
+                 <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: '500' }}>
+                   Page {userDirectoryPage} of {Math.ceil(adminUsers.length / 20)}
+                 </span>
+                 <button 
+                   className="btn-secondary" 
+                   style={{ padding: '4px 10px', fontSize: '12px' }}
+                   disabled={userDirectoryPage >= Math.ceil(adminUsers.length / 20)}
+                   onClick={() => setUserDirectoryPage(p => p + 1)}
+                 >
+                   Next ▶
+                 </button>
+               </div>
+             )}
+           </div>
 
           {/* Dual Mappings Forms Grid */}
           <div className="admin-grid-two">
@@ -1259,21 +1491,41 @@ export default function App() {
             </div>
           </div>
 
-          {/* Roles & Rules Mappings Directory Table */}
-          <div className="admin-card">
-            <h3 className="admin-card-title">Active Role Configurations</h3>
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Role ID</th>
-                    <th>Role Name</th>
-                    <th>Description</th>
-                    <th>Mapped Rules (SQL Predicate Constraints)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adminRoles.map((r) => (
+           {/* Roles & Rules Mappings Directory Table */}
+           <div className="admin-card">
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+               <h3 className="admin-card-title" style={{ margin: '0' }}>Active Role Configurations</h3>
+               <input 
+                 type="text" 
+                 placeholder="Search roles or descriptions..." 
+                 value={roleSearchQuery}
+                 onChange={e => setRoleSearchQuery(e.target.value)}
+                 style={{
+                   padding: '6px 12px',
+                   borderRadius: '6px',
+                   border: '1px solid var(--border-color)',
+                   backgroundColor: 'var(--bg-secondary)',
+                   color: 'var(--text-primary)',
+                   fontSize: '13px',
+                   width: '240px'
+                 }}
+               />
+             </div>
+             <div className="table-container">
+               <table>
+                 <thead>
+                   <tr>
+                     <th>Role ID</th>
+                     <th>Role Name</th>
+                     <th>Description</th>
+                     <th>Mapped Rules (SQL Predicate Constraints)</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {adminRoles.filter(r => {
+                     const query = roleSearchQuery.toLowerCase();
+                     return r.role_name.toLowerCase().includes(query) || (r.description || '').toLowerCase().includes(query);
+                   }).map((r) => (
                     <tr key={r.role_id}>
                       <td>{r.role_id}</td>
                       <td><b>{r.role_name}</b></td>
@@ -1303,6 +1555,237 @@ export default function App() {
               </table>
             </div>
           </div>
+          </>
+        )}
+
+        {activeAdminTab === 'model' && (
+          <div style={{ marginTop: '20px' }}>
+            {/* Warning / Banner */}
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: '#FFFDE7',
+              border: '1px solid #FFF59D',
+              borderRadius: '8px',
+              color: '#F57F17',
+              fontSize: '13px',
+              fontWeight: '500',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>⚠️</span>
+              <span>
+                <b>Read-Only Data Model View:</b> To modify the schema, please edit the system database configuration files (e.g. <code>init.sql</code> or <code>db_schema_mapping.json</code>).
+              </span>
+            </div>
+
+            {/* Interactive Controls & Viewport Card */}
+            <div className="admin-card" style={{ padding: '0', overflow: 'hidden', position: 'relative', height: '600px', display: 'flex', flexDirection: 'column' }}>
+              {/* Canvas Controls Header */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 20px',
+                borderBottom: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-secondary)'
+              }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '600', margin: '0' }}>Interactive Relationship Map</h3>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    className="btn-secondary" 
+                    style={{ padding: '4px 12px', fontSize: '12px' }}
+                    onClick={() => setZoom(z => Math.min(z + 0.1, 2))}
+                  >
+                    Zoom In (+)
+                  </button>
+                  <button 
+                    className="btn-secondary" 
+                    style={{ padding: '4px 12px', fontSize: '12px' }}
+                    onClick={() => setZoom(z => Math.max(z - 0.1, 0.5))}
+                  >
+                    Zoom Out (-)
+                  </button>
+                  <button 
+                    className="btn-secondary" 
+                    style={{ padding: '4px 12px', fontSize: '12px' }}
+                    onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+                  >
+                    Reset View ↺
+                  </button>
+                </div>
+              </div>
+
+              {/* Interactive Canvas Viewport */}
+              <div 
+                style={{
+                  flexGrow: 1,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  backgroundColor: 'var(--bg-canvas, #F9FAFB)',
+                  cursor: isDragging ? 'grabbing' : 'grab'
+                }}
+                onMouseDown={handleERMouseDown}
+                onMouseMove={handleERMouseMove}
+                onMouseUp={handleERMouseUp}
+                onMouseLeave={handleERMouseUp}
+              >
+                {!adminSchema ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'grey' }}>
+                    <span>Loading schema model mapping...</span>
+                  </div>
+                ) : (
+                  (() => {
+                    const tables = adminSchema.database_tables || [];
+                    const N = tables.length;
+                    const cardWidth = 190;
+                    const cardHeight = 100;
+                    
+                    // Compute circular layouts automatically
+                    const positions = {};
+                    tables.forEach((t, i) => {
+                      const theta = (2 * Math.PI * i) / N;
+                      // Center of canvas: X=450, Y=250. Elliptical radius: RX=280, RY=160
+                      positions[t.table_name] = {
+                        x: 450 + 280 * Math.cos(theta),
+                        y: 250 + 160 * Math.sin(theta)
+                      };
+                    });
+
+                    const relationships = getERRelationships(tables);
+
+                    return (
+                      <svg 
+                        style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
+                      >
+                        <defs>
+                          <marker 
+                            id="er-arrow" 
+                            viewBox="0 0 10 10" 
+                            refX="16" 
+                            refY="5" 
+                            markerWidth="6" 
+                            markerHeight="6" 
+                            orient="auto-start-reverse"
+                          >
+                            <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--btn-primary, #2563eb)" />
+                          </marker>
+                        </defs>
+
+                        <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`} style={{ pointerEvents: 'auto' }}>
+                          {/* Draw Relationship Lines */}
+                          {relationships.map((rel, idx) => {
+                            const source = positions[rel.sourceTable];
+                            const target = positions[rel.targetTable];
+                            if (!source || !target) return null;
+                            return (
+                              <line
+                                key={`edge-${idx}`}
+                                x1={source.x}
+                                y1={source.y}
+                                x2={target.x}
+                                y2={target.y}
+                                stroke="var(--btn-primary, #2563eb)"
+                                strokeWidth="2"
+                                opacity="0.6"
+                                markerEnd="url(#er-arrow)"
+                              />
+                            );
+                          })}
+
+                          {/* Draw Tables */}
+                          {tables.map((table) => {
+                            const pos = positions[table.table_name];
+                            if (!pos) return null;
+                            const filteredCols = getFilteredColumns(table);
+
+                            return (
+                              <foreignObject
+                                key={table.table_name}
+                                x={pos.x - cardWidth / 2}
+                                y={pos.y - cardHeight / 2}
+                                width={cardWidth}
+                                height={180}
+                                style={{ overflow: 'visible' }}
+                              >
+                                <div 
+                                  className="er-card"
+                                  style={{
+                                    backgroundColor: 'var(--bg-secondary)',
+                                    border: '1.5px solid var(--border-color)',
+                                    borderRadius: '8px',
+                                    boxShadow: 'var(--shadow-sm)',
+                                    width: `${cardWidth}px`,
+                                    overflow: 'hidden',
+                                    fontFamily: 'inherit'
+                                  }}
+                                >
+                                  {/* Header */}
+                                  <div style={{
+                                    backgroundColor: '#1E293B',
+                                    color: '#FFFFFF',
+                                    padding: '6px 10px',
+                                    fontSize: '12px',
+                                    fontWeight: '700',
+                                    textAlign: 'center',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                  }}>
+                                    {table.table_name}
+                                  </div>
+                                  
+                                  {/* Columns List */}
+                                  <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    {filteredCols.map(col => (
+                                      <div 
+                                        key={col.name} 
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '6px',
+                                          fontSize: '11px',
+                                          color: 'var(--text-primary)'
+                                        }}
+                                      >
+                                        <span style={{
+                                          fontSize: '8px',
+                                          fontWeight: 'bold',
+                                          padding: '1px 3px',
+                                          borderRadius: '3px',
+                                          backgroundColor: col.isPK ? '#E3F2FD' : '#E8F5E9',
+                                          color: col.isPK ? '#0D47A1' : '#1B5E20',
+                                          border: col.isPK ? '1px solid #BBDEFB' : '1px solid #C8E6C9'
+                                        }}>
+                                          {col.isPK ? 'PK' : 'FK'}
+                                        </span>
+                                        <span style={{ fontWeight: '600', flexGrow: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={col.name}>
+                                          {col.name}
+                                        </span>
+                                        <span style={{ color: 'grey', fontSize: '9px' }}>
+                                          {col.type.toLowerCase()}
+                                        </span>
+                                      </div>
+                                    ))}
+                                    {filteredCols.length === 0 && (
+                                      <span style={{ fontSize: '11px', color: 'grey', fontStyle: 'italic', textAlign: 'center' }}>
+                                        No Keys Found
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </foreignObject>
+                            );
+                          })}
+                        </g>
+                      </svg>
+                    );
+                  })()
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         </div>
       )}
 

@@ -107,6 +107,13 @@ The API is active at [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
    ```
 4. Access the web interface in your browser at [http://localhost:5173/](http://localhost:5173/).
 
+### Step 2.6: Alternative Quick Launch (Windows run.bat)
+For Windows users, we have provided a quick-start script **[run.bat](file:///run.bat)** in the project root folder. Running this batch script automatically:
+* Opens a separate terminal window and launches the FastAPI backend.
+* Waits 3 seconds for database connectivity and config caches to load.
+* Opens another terminal window and launches the Vite React frontend client.
+This allows you to spin up the entire local workspace with a single double-click.
+
 ---
 
 ## 🔑 3. LLM API Key Configuration

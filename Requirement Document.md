@@ -560,3 +560,25 @@ $$Throughput = \frac{Prompt\ Tokens + Completion\ Tokens}{Total\ Processing\ Lat
   }
   ```
 
+### `GET /api/v1/admin/schema`
+
+* **Processing Routine:** Asserts that the caller has Admin clearance session cookies. Loads the system's structural schema mapping from `db_schema_mapping.json` and yields it as a JSON payload.
+* **Response Payload:** Returns the structured list of database tables, column names, column data types, and key constraint descriptions.
+
+---
+
+## 8. Admin Settings Panel Layout & Navigation
+
+To provide a premium and clean user experience, the Admin Settings Panel is organized into three dedicated viewports accessible via sub-tabs:
+
+1. **Analytics Dashboard**: Houses the system performance aggregates (KPI metric grids) and the recent query execution logs database table.
+   * **Telemetry Pagination**: Telemetry logs are limited to the last 200 rows at the API layer, and paginated in pages of 20 records in the UI.
+   * **Excel/CSV Export**: Includes an export button in the card header to trigger local downloads of the loaded 200 telemetry rows as a `.csv` file.
+   * **Full SQL Extract Notice**: Features a label indicating that developers can query the complete execution logs beyond the 200 rows by running `SELECT * FROM execution_log ORDER BY recorded_at DESC;` directly on the database.
+2. **RBAC Settings**: Houses the user directory table, role/rule mappings, and security configuration forms (role/rule creation, user-role associations).
+   * **User Directory Pagination**: Paginates all loaded user profile records in pages of 20 records (unlimited database load).
+   * **Role Configuration Search**: Features a search input field in the top right corner of the active role configurations card to filter lists by role name or description.
+3. **Data Model View**: Houses the dynamic, interactive visual ER relationship diagram with zoom-in, zoom-out, reset, and drag-to-pan canvas operations.
+
+
+

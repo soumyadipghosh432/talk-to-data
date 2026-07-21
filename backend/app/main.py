@@ -429,7 +429,7 @@ def admin_get_analytics(current_admin: User = Depends(get_current_admin), db: Se
         SELECT log_id, recorded_at, execution_status, latency_ms, total_tokens, throughput_tps, generated_sql_statement 
         FROM execution_log 
         ORDER BY recorded_at DESC 
-        LIMIT 10
+        LIMIT 200
     """)).fetchall()
     
     recent_logs = []
@@ -457,3 +457,18 @@ def admin_get_analytics(current_admin: User = Depends(get_current_admin), db: Se
         "status_breakdown": status_breakdown,
         "recent_logs": recent_logs
     }
+
+@app.get("/api/v1/admin/schema")
+def admin_get_schema(current_admin: User = Depends(get_current_admin)):
+    import os
+    import json
+    schema_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "db_schema_mapping.json")
+    if not os.path.exists(schema_path):
+        raise HTTPException(status_code=404, detail="Database schema mapping file not found.")
+    try:
+        with open(schema_path, "r", encoding="utf-8") as f:
+            schema_data = json.load(f)
+        return schema_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading schema mapping: {str(e)}")
+
