@@ -604,10 +604,35 @@ tr:hover td {
 
 /* Split Homepage / Auth Page */
 .split-auth-container {
+  position: relative;
   display: flex;
   width: 100vw;
   height: 100vh;
   background-color: var(--bg-primary);
+}
+
+.auth-theme-toggle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  z-index: 100;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.auth-theme-toggle:hover {
+  background: var(--bg-secondary);
+  border-color: var(--text-primary);
 }
 
 .auth-column {

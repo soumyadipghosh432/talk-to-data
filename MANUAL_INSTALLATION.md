@@ -220,3 +220,54 @@ AWS_SECRET_ACCESS_KEY=YOUR_AWS_SECRET_ACCESS_KEY
 AWS_DEFAULT_REGION=us-east-1
 ```
 Ensure that the IAM user bound to these keys has the `AmazonBedrockFullAccess` policy (or `InvokeModel` permissions for the Claude Sonnet model ID) activated in AWS.
+
+---
+
+### C. Database Dialect Switch (Postgres ──► MySQL / AWS RDS MySQL)
+
+If you migrate the database repository from PostgreSQL to a MySQL-based database (e.g. AWS RDS MySQL), you must adjust the backend SQL compiler settings and connection driver to accommodate dialect variations:
+
+#### Step 1: Install MySQL Driver
+Install the Python MySQL client libraries inside your virtual environment:
+```bash
+pip install pymysql
+```
+
+#### Step 2: Update Connection String in `.env`
+Change the database schema scheme in `.env` to reference the MySQL driver (`pymysql`):
+```env
+DATABASE_URL=mysql+pymysql://db_user:db_password@rds-mysql-endpoint:3306/db_name
+```
+
+#### Step 3: Update LLM Text-to-SQL Instructions (`backend/app/agent.py`)
+Because the agent prompt is configured for PostgreSQL syntax, update references inside the `system_prompt` in `backend/app/agent.py`:
+1. **Change Dialect Name**: Open [agent.py](file:///c:/Users/Roni/Documents/GitHub/talk-to-data/backend/app/agent.py) and change `"PostgreSQL"` references in the `system_prompt` to `"MySQL 8.0+"`.
+2. **Add Syntax Rules**: Add instructions to the prompt to guide the model on MySQL dialect rules:
+   * Use `CONCAT()` instead of `||` for string concatenation.
+   * Use standard MySQL date math (`NOW() - INTERVAL 30 DAY`) instead of PostgreSQL intervals (`INTERVAL '30 days'`).
+   * Use default case-insensitive `LIKE` lookups instead of PostgreSQL `ILIKE`.
+
+---
+
+### D. Database Dialect Switch (Postgres ──► AWS Redshift)
+
+If you migrate your database repository to Amazon Redshift (OLAP data warehouse), you must adjust the backend driver and prompt guidelines:
+
+#### Step 1: Install Redshift Driver
+Install the SQLAlchemy Redshift dialect package along with the PostgreSQL client library inside your virtual environment:
+```bash
+pip install sqlalchemy-redshift psycopg2-binary
+```
+
+#### Step 2: Update Connection String in `.env`
+Update the database connection string to target the Redshift cluster endpoint and its default port (`5439`):
+```env
+DATABASE_URL=redshift+psycopg2://db_user:db_password@redshift-cluster-endpoint:5439/db_name
+```
+
+#### Step 3: Update LLM Text-to-SQL Instructions (`backend/app/agent.py`)
+Amazon Redshift is built on a PostgreSQL 8.0.2 fork, which means it natively supports many standard PostgreSQL features (such as string concatenation `||` and case-insensitive pattern matching `ILIKE`). However, to prevent queries from failing:
+1. **Change Dialect Name**: Open [agent.py](file:///c:/Users/Roni/Documents/GitHub/talk-to-data/backend/app/agent.py) and change `"PostgreSQL"` references in the `system_prompt` to `"Amazon Redshift"`.
+2. **Unsupported Features Warning**: Add a rule to the prompt instructing the model to avoid PostgreSQL-specific features not supported by Redshift (such as recursive CTEs, standard `SERIAL` types, and complex spatial or XML functions).
+
+

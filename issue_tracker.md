@@ -76,7 +76,17 @@ This document records all functional, layout, and database issues discovered dur
 * **Resolution**: Built `GET /api/v1/chat/llm-status` in [main.py](file:///c:/Users/Roni/Documents/GitHub/talk-to-data/backend/app/main.py) to return active and available models list. Rendered this status inside the user dropdown and created a dedicated **Model Settings** Admin sub-tab in [App.jsx](file:///c:/Users/Roni/Documents/GitHub/talk-to-data/frontend/src/App.jsx).
 * **Status**: ✅ **Resolved**
 
+### 🧪 Verification & QA Integration Testing (July 22, 2026 Verification Run)
+* **Description**: A comprehensive programmatic test run was performed to execute test cases covering single-table queries, joins, multi-turn ordinals, and guardrail bypasses.
+* **Results**:
+  * **UAT-10 (Sorting Preservation)**: Passed. Follow-up ordinal queries successfully generated CTE offsets utilizing the parent's `ORDER BY total_amount DESC` context.
+  * **UAT-11 (CTE Validator)**: Passed. Safety validator successfully allowed and executed `WITH` prefixed queries.
+  * **UAT-12 (Thinking Sanitizer)**: Passed. Global regex successfully parsed out model reasoning XML brackets from user response bubbles.
+  * **Guardrails**: Passed. Intercepted out-of-scope queries (weather) and allowed greetings in-scope.
+* **Status**: 🏁 **Fully Verified & Passed**
+
 ---
+
 
 ## 📈 2. Project Execution Analytics
 

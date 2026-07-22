@@ -784,6 +784,13 @@ export default function App() {
       {/* 2. SPLIT ONBOARDING (LOGIN / REGISTER VIEWPORTS) */}
       {currentPage === 'auth' && (
         <div className="split-auth-container">
+          <button 
+            className="auth-theme-toggle" 
+            onClick={toggleTheme}
+            title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+          >
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
           {/* Left: Login Column */}
           <div className="auth-column login">
             <div className="auth-card">

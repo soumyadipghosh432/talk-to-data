@@ -183,3 +183,28 @@ The frontend Admin Dashboard is organized into four separate, modular sub-tabs:
 2. **RBAC Settings**: Mapped roles tables (with search index), and forms to create or associate permissions with accounts.
 3. **Data Model View**: Interactive visual schema ER diagram (zoom-in/out, drag-to-pan) dynamically generated from `/api/v1/admin/schema`.
 4. **Model Settings**: Read-only display of the active connected LLM pipeline and status indicators showing which providers (Gemini, Bedrock, OpenAI) are available/activated in `llm_config.yaml`. Loaded dynamically from the `/api/v1/chat/llm-status` endpoint.
+
+---
+
+## 🧪 8. Integration Testing & QA Verification
+
+To maintain code quality and secure operation, developers can verify updates using two test suites:
+
+### 1. Unit Tests (`backend/test_app.py`)
+Tests backend logic configuration and sanitizers using `pytest`:
+* **Validation Toggles**: Tests config loaders to raise runtime errors if multiple LLM providers are marked active.
+* **Access Rules**: Confirms password length limits (5-20 characters) and token block routes.
+* **SQL Safety Guards**: Tests `sql_validation_node` against disallowed inputs (e.g. `INSERT` or `DROP`).
+* **Execution**: Run via command terminal:
+  ```bash
+  pytest test_app.py
+  ```
+
+### 2. Programmatic Integration Tests (`scratch/test_questions_run.py`)
+Simulates user queries and conversational turns directly against the active database:
+* **Test Battery**: Executes single-table queries, multi-turn ordinal context retaining (retaining CTEs and sorting constraints), multi-table joins, and guardrail topic limits.
+* **Execution**: Run via command terminal:
+  ```bash
+  python scratch/test_questions_run.py
+  ```
+

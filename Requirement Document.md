@@ -200,6 +200,8 @@ The user interface follows a clean, production-grade theme design. Flashy compon
 
 *Production Content Formatting:* Layout containers housing data matrix summaries must be styled correctly. Tables containing large or extensive record outputs must implement standalone `overflow-x: auto` boundaries. This makes the wide tables scroll horizontally independently, keeping the overarching application workspace locked in position on the user's viewport. Important numerical figures must be parsed and wrapped in **bold styling tags** dynamically.
 
+* **Landing Page Theme Switcher**: A floating theme switcher button is positioned in the top-right corner of the Login/Register landing page to allow users to adjust system visual styles (Light/Dark) before authenticating.
+
 ---
 
 ## 4. Database Schema Design (`init.sql`)
