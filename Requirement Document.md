@@ -565,11 +565,29 @@ $$Throughput = \frac{Prompt\ Tokens + Completion\ Tokens}{Total\ Processing\ Lat
 * **Processing Routine:** Asserts that the caller has Admin clearance session cookies. Loads the system's structural schema mapping from `db_schema_mapping.json` and yields it as a JSON payload.
 * **Response Payload:** Returns the structured list of database tables, column names, column data types, and key constraint descriptions.
 
+### `GET /api/v1/chat/llm-status`
+
+* **Processing Routine:** Asserts that the caller is authenticated. Loads configuration profiles from `llm_config.yaml` to identify the active provider, model name, and a checklist of all available LLM pipelines.
+* **Response Payload:** Returns JSON detailing active and available integration pipelines:
+  ```json
+  {
+    "active_provider": "GOOGLE_GEMINI_API",
+    "active_model_name": "Google Gemini (gemini-2.5-flash-lite)",
+    "available_models": [
+      {
+        "name": "GOOGLE_GEMINI_API",
+        "active": true,
+        "friendly_name": "Google Gemini (gemini-2.5-flash-lite)"
+      }
+    ]
+  }
+  ```
+
 ---
 
 ## 8. Admin Settings Panel Layout & Navigation
 
-To provide a premium and clean user experience, the Admin Settings Panel is organized into three dedicated viewports accessible via sub-tabs:
+To provide a premium and clean user experience, the Admin Settings Panel is organized into four dedicated viewports accessible via sub-tabs:
 
 1. **Analytics Dashboard**: Houses the system performance aggregates (KPI metric grids) and the recent query execution logs database table.
    * **Telemetry Pagination**: Telemetry logs are limited to the last 200 rows at the API layer, and paginated in pages of 20 records in the UI.
@@ -579,6 +597,8 @@ To provide a premium and clean user experience, the Admin Settings Panel is orga
    * **User Directory Pagination**: Paginates all loaded user profile records in pages of 20 records (unlimited database load).
    * **Role Configuration Search**: Features a search input field in the top right corner of the active role configurations card to filter lists by role name or description.
 3. **Data Model View**: Houses the dynamic, interactive visual ER relationship diagram with zoom-in, zoom-out, reset, and drag-to-pan canvas operations.
+4. **Model Settings**: Displays active LLM connection details and lists all available LLM integration pipelines (Gemini, OpenAI, Bedrock Claude, Amazon Nova, Bedrock GPT-OSS) and their active connection states.
+
 
 
 

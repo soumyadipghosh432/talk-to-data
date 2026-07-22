@@ -51,6 +51,31 @@ This document records all functional, layout, and database issues discovered dur
 * **Resolution**: Changed the database query calls in [main.py](file:///c:/Users/Roni/Documents/GitHub/talk-to-data/backend/app/main.py) from `db.query(text(...)).scalar()` (which double-prepends `SELECT`) to **`db.execute(text(...)).scalar()`** to execute raw SQL directly.
 * **Status**: ✅ **Resolved**
 
+### UAT-09: Telemetry Export Button Text Change
+* **Description**: The user requested changing the export label from "Export to Excel (CSV)" to a simpler "Export (CSV)".
+* **Resolution**: Modified the label inside [App.jsx](file:///c:/Users/Roni/Documents/GitHub/talk-to-data/frontend/src/App.jsx) to display *"Export (CSV)"*.
+* **Status**: ✅ **Resolved**
+
+### UAT-10: Ordinal Follow-up Sorting Drift
+* **Description**: Submitting follow-up queries referencing ordinals (e.g. *"details for the 4th order"*) caused the model to lose the sorting context (`ORDER BY total_amount DESC`) and fall back to ordering by `order_id` in offsets.
+* **Resolution**: Refined Rule 6 in the prompt of `text_to_sql_node` inside [agent.py](file:///c:/Users/Roni/Documents/GitHub/talk-to-data/backend/app/agent.py) to explicitly mandate preserving sorting parameters (`ORDER BY`), joins, and filters of the preceding query when constructing offset queries.
+* **Status**: ✅ **Resolved**
+
+### UAT-11: CTE WITH Statements Blocked by Security
+* **Description**: Queries using Common Table Expressions (starting with `WITH ...`) triggered false-positive safety flags and were blocked by the SQL validator.
+* **Resolution**: Updated the regex prefix matcher in `sql_validation_node` inside [agent.py](file:///c:/Users/Roni/Documents/GitHub/talk-to-data/backend/app/agent.py) to match and permit query strings starting with the `WITH` keyword alongside `SELECT`.
+* **Status**: ✅ **Resolved**
+
+### UAT-12: LLM Thinking/Reasoning Output Leakage
+* **Description**: Generative models (like Gemini 2.5 or Bedrock Claude) returned XML-styled thinking blocks (`<reasoning>...</reasoning>`) which triggered query syntax/validation blocks or leaked directly into the chat response bubbles.
+* **Resolution**: Implemented a unified `clean_llm_response` function in [agent.py](file:///c:/Users/Roni/Documents/GitHub/talk-to-data/backend/app/agent.py) to strip all XML thinking tags (`<reasoning>`, `<thought>`, `<thinking>`) and their content. Routed the guardrail node, SQL generation node, and response synthesis node through this parser.
+* **Status**: ✅ **Resolved**
+
+### UAT-13: Active Model Visibility & Telemetry
+* **Description**: The user requested visibility on which model is currently connected in both the chat interface (user dropdown) and the admin panel (new tab).
+* **Resolution**: Built `GET /api/v1/chat/llm-status` in [main.py](file:///c:/Users/Roni/Documents/GitHub/talk-to-data/backend/app/main.py) to return active and available models list. Rendered this status inside the user dropdown and created a dedicated **Model Settings** Admin sub-tab in [App.jsx](file:///c:/Users/Roni/Documents/GitHub/talk-to-data/frontend/src/App.jsx).
+* **Status**: ✅ **Resolved**
+
 ---
 
 ## 📈 2. Project Execution Analytics

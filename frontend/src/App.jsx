@@ -165,6 +165,18 @@ export default function App() {
   const [roleSearchQuery, setRoleSearchQuery] = useState('');
   const [logsPage, setLogsPage] = useState(1);
   const [userDirectoryPage, setUserDirectoryPage] = useState(1);
+  const [llmStatus, setLlmStatus] = useState(null);
+
+  const fetchLlmStatus = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/chat/llm-status`, { credentials: 'include' });
+      if (res.ok) {
+        setLlmStatus(await res.json());
+      }
+    } catch (e) {
+      console.error('Failed to fetch LLM status:', e);
+    }
+  };
 
   const messagesEndRef = useRef(null);
 
@@ -197,6 +209,7 @@ export default function App() {
         setUser(data);
         setCurrentPage('chat');
         fetchChats();
+        fetchLlmStatus();
       } else {
         setUser(null);
         setCurrentPage('auth');
@@ -450,6 +463,9 @@ export default function App() {
       // 5. Fetch Schema
       res = await fetch(`${API_BASE}/admin/schema`, { credentials: 'include' });
       if (res.ok) setAdminSchema(await res.json());
+
+      // 6. Fetch LLM Status
+      fetchLlmStatus();
 
     } catch (e) {
       setAdminError('Failed to fetch admin dashboard directory logs.');
@@ -728,6 +744,11 @@ export default function App() {
                 <div style={{ padding: '8px 12px', fontSize: '12px', color: 'grey' }}>
                   Logged in as: <b>{user?.username}</b> ({user?.access_type})
                 </div>
+                {llmStatus && (
+                  <div style={{ padding: '0px 12px 8px 12px', fontSize: '11px', color: 'grey', marginTop: '-4px' }}>
+                    🤖 Active LLM: <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{llmStatus.active_model_name}</span>
+                  </div>
+                )}
                 <div className="dropdown-divider"></div>
                 <button className="dropdown-item" onClick={toggleTheme}>
                   {theme === 'light' ? (
@@ -1096,6 +1117,22 @@ export default function App() {
               onClick={() => setActiveAdminTab('model')}
             >
               Data Model View
+            </button>
+            <button 
+              className={`admin-tab-btn ${activeAdminTab === 'model_settings' ? 'active' : ''}`}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderBottom: activeAdminTab === 'model_settings' ? '2px solid var(--btn-primary, #2563eb)' : '2px solid transparent',
+                padding: '8px 16px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                color: activeAdminTab === 'model_settings' ? 'var(--text-primary)' : 'grey',
+                fontSize: '14px'
+              }}
+              onClick={() => setActiveAdminTab('model_settings')}
+            >
+              Model Settings
             </button>
           </div>
 
@@ -1782,6 +1819,75 @@ export default function App() {
                     );
                   })()
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeAdminTab === 'model_settings' && (
+          <div style={{ marginTop: '20px' }}>
+            {/* Warning / Banner */}
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: '#E8F5E9',
+              border: '1px solid #C8E6C9',
+              borderRadius: '8px',
+              color: '#2E7D32',
+              fontSize: '13px',
+              fontWeight: '500',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span>⚙️</span>
+              <span>
+                <b>Model Settings:</b> To change the active LLM provider or switch the Gemini model parameters, edit the configuration profile (<code>llm_config.yaml</code>) inside the backend repository.
+              </span>
+            </div>
+
+            {/* Models Configuration Table Card */}
+            <div className="admin-card">
+              <h3 className="admin-card-title" style={{ marginBottom: '16px' }}>Available LLM Integration Pipelines</h3>
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Pipeline/Provider ID</th>
+                      <th>Display Name</th>
+                      <th>Integration Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {llmStatus?.available_models.map((model) => (
+                      <tr key={model.name}>
+                        <td><code>{model.name}</code></td>
+                        <td><b>{model.friendly_name}</b></td>
+                        <td>
+                          <span className="admin-badge" style={{
+                            backgroundColor: model.active ? '#E8F5E9' : 'rgba(0,0,0,0.05)',
+                            color: model.active ? '#2E7D32' : 'grey',
+                            borderColor: model.active ? '#C8E6C9' : '#ddd',
+                            border: '1px solid',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: '600'
+                          }}>
+                            {model.active ? '● Active Connection' : 'Inactive'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {!llmStatus && (
+                      <tr>
+                        <td colSpan="3" style={{ textAlign: 'center', color: 'grey', padding: '20px' }}>
+                          Loading LLM pipelines configurations status...
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

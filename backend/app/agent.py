@@ -16,16 +16,32 @@ from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, END
 
-# Import a mock or actual BedrockChat if needed
+# Import modern ChatBedrock (from langchain-aws partner package)
 try:
-    from langchain_community.chat_models import BedrockChat
+    from langchain_aws import ChatBedrock
 except ImportError:
-    # Fallback placeholder if community package lacks BedrockChat
-    class BedrockChat:
-        def __init__(self, model_id: str, **kwargs):
-            self.model_id = model_id
-        def invoke(self, *args, **kwargs):
-            raise NotImplementedError("BedrockChat is not fully configured on this local machine.")
+    # Fallback to legacy community package if partner package is not installed
+    try:
+        from langchain_community.chat_models import BedrockChat as ChatBedrock
+    except ImportError:
+        # Fallback placeholder if neither package is available on startup
+        class ChatBedrock:
+            def __init__(self, model_id: str, **kwargs):
+                self.model_id = model_id
+            def invoke(self, *args, **kwargs):
+                raise NotImplementedError(
+                    "ChatBedrock/BedrockChat is not fully configured on this local machine. Please run 'pip install langchain-aws'."
+                )
+
+
+def clean_llm_response(text: str) -> str:
+    if not text:
+        return ""
+    # Strip any XML/HTML-like reasoning/thought/thinking blocks from the model's output
+    for tag in ["reasoning", "thought", "thinking"]:
+        text = re.sub(rf"<{tag}>.*?</{tag}>", "", text, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(rf"^<{tag}>.*?(?:</{tag}>|\Z)", "", text, flags=re.DOTALL | re.IGNORECASE)
+    return text.strip()
 
 # ----------------------------------------------------
 # LLM Initializer
@@ -46,10 +62,21 @@ def initialize_active_language_model():
         return ChatGoogleGenerativeAI(model=GEMINI_MODEL, google_api_key=settings.GOOGLE_GEMINI_KEY, temperature=0.0)
         
     elif target_llm == "AMAZON_NOVA_BEDROCK":
-        return BedrockChat(model_id="amazon.nova-model-v1")
+        return ChatBedrock(model_id="amazon.nova-model-v1")
         
     elif target_llm == "GPTOSS_20B_BEDROCK":
-        return BedrockChat(model_id="gptoss-20b-v1")
+        return ChatBedrock(
+            model_id="openai.gpt-oss-20b-1:0",
+            region_name="us-east-1",
+            model_kwargs={"temperature": 0.0}
+        )
+        
+    elif target_llm == "AWS_BEDROCK_CLAUDE":
+        return ChatBedrock(
+            model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
+            region_name="us-east-1",
+            model_kwargs={"temperature": 0.0}
+        )
         
     else:
         raise ValueError(f"Unknown LLM Provider Type: {target_llm}")
@@ -188,7 +215,8 @@ def guardrail_node(state: AgentState) -> AgentState:
     
     try:
         response = llm.invoke(messages)
-        verdict = get_content_string(response.content).strip().upper()
+        raw_verdict = get_content_string(response.content)
+        verdict = clean_llm_response(raw_verdict).upper()
         update_token_metrics(state, system_prompt + prompt_text, response.content, response)
     except Exception as e:
         # Fallback if model fails (e.g. key error)
@@ -282,7 +310,7 @@ def text_to_sql_node(state: AgentState) -> AgentState:
         "3. Keep SQL syntax fully compatible with standard PostgreSQL.\n"
         "4. Double check columns and joins. Join on relevant IDs where necessary (e.g. orders.customer_id = customers.customer_id).\n"
         "5. If the query asks for counts or summaries, apply correct aggregations (e.g., SUM, COUNT, AVG, ROUND).\n"
-        "6. CRITICAL: Review the 'CONVERSATION HISTORY' block carefully to understand what entity, product, or filter is referenced by terms like 'this', 'that', 'it', 'for this', 'the second one', 'details for third one' etc. in the current User Question. For example, if the history shows a primary list of orders (e.g. order IDs 70, 81, 83), and the user asks 'details for third one', this refers to the details of the third order (order ID 83). Do NOT automatically switch to query customer details just because the user asked a customer question in the intermediate turn (e.g. 'customer name for second one'). Align the query type with the user's specific phrasing; a general 'details of the third one' refers back to the primary entity list (Orders), not the customer, unless they explicitly specify 'customer details'.\n"
+        "6. CRITICAL: Review the 'CONVERSATION HISTORY' block carefully to understand what entity, product, or filter is referenced by terms like 'this', 'that', 'it', 'for this', 'the second one', 'details for third one', 'the 4th order' etc. in the current User Question. If the user asks a follow-up referencing an item by its ordinal position in a previously displayed list (e.g., 'details for the 4th order'), and you must construct a query using LIMIT/OFFSET, you MUST preserve the exact same sorting (ORDER BY), filters (WHERE), and joins from the preceding query in the history to ensure the offset matches the correct row. For example, if the previous query was sorted by total_amount DESC, the follow-up query looking for the 4th item must also be sorted by total_amount DESC (using LIMIT 1 OFFSET 3). Alternatively, if the exact ID of that ordinal item is clear from the conversation history, you can query directly by that ID. Do NOT automatically switch to query customer details just because the user asked a customer question in the intermediate turn (e.g. 'customer name for second one'). Align the query type with the user's specific phrasing; a general 'details of the third one' refers back to the primary entity list (Orders), not the customer, unless they explicitly specify 'customer details'.\n"
         "7. STRICT SECURITY ENFORCEMENT: You must strictly respect the 'CRITICAL RULE-BASED SECURITY CONSTRAINTS' (e.g. geographic_region = 'US'). If the user's question asks to compare or retrieve data that violates this constraint (for example, asking 'is it sold in Europe?' or 'show EMEA transactions' when restricted to 'US'), you must NOT query that forbidden region. You MUST output exactly the word 'SECURITY_VIOLATION' (no spaces, no other characters) to notify the validator to block the query and raise an access denied error."
     )
     
@@ -293,7 +321,8 @@ def text_to_sql_node(state: AgentState) -> AgentState:
     ]
     
     response = llm.invoke(messages)
-    sql_query = get_content_string(response.content).strip()
+    raw_sql = get_content_string(response.content)
+    sql_query = clean_llm_response(raw_sql)
     
     # Strip any markdown wrappers if the LLM outputted them anyway
     sql_query = re.sub(r"^```sql\s*", "", sql_query, flags=re.IGNORECASE)
@@ -329,11 +358,11 @@ def sql_validation_node(state: AgentState) -> AgentState:
     clean_sql = re.sub(r"/\*.*?\*/", "", clean_sql, flags=re.DOTALL)
     clean_sql = clean_sql.strip()
     
-    # Match SELECT case-insensitively
-    if not re.match(r"^SELECT\b", clean_sql, re.IGNORECASE):
+    # Match SELECT or WITH case-insensitively
+    if not re.match(r"^(SELECT|WITH)\b", clean_sql, re.IGNORECASE):
         state["status"] = "SQL_ERROR"
         state["sql_error"] = f"Prohibited statement type. Generated SQL: {sql}"
-        state["response"] = "Security Exception: Unsafe database query blocked. Only data read operations (SELECT statements) are permitted."
+        state["response"] = "Security Exception: Unsafe database query blocked. Only data read operations (SELECT or WITH statements) are permitted."
         return state
         
     # Check for forbidden keywords (write operations)
@@ -435,7 +464,8 @@ def synthesis_node(state: AgentState) -> AgentState:
     ]
     
     response = llm.invoke(messages)
-    state["response"] = get_content_string(response.content).strip()
+    raw_response = get_content_string(response.content)
+    state["response"] = clean_llm_response(raw_response)
     state["status"] = "SUCCESS"
     update_token_metrics(state, system_prompt + prompt_text, response.content, response)
     

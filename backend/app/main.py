@@ -472,3 +472,55 @@ def admin_get_schema(current_admin: User = Depends(get_current_admin)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading schema mapping: {str(e)}")
 
+@app.get("/api/v1/chat/llm-status")
+def get_llm_status(current_user: User = Depends(get_current_user)):
+    import yaml
+    import os
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "llm_config.yaml")
+    if not os.path.exists(config_path):
+        raise HTTPException(status_code=404, detail="LLM config file not found.")
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_data = yaml.safe_load(f)
+        
+        gemini_model = config_data.get("gemini_model", "gemini-2.5-flash-lite")
+        models = config_data.get("models", [])
+        
+        active_provider = "UNKNOWN"
+        for m in models:
+            if m.get("active") is True:
+                active_provider = m.get("name")
+                
+        # Friendly model display name mapping
+        def get_friendly_name(provider, gemini_name):
+            if provider == "GOOGLE_GEMINI_API":
+                return f"Google Gemini ({gemini_name})"
+            elif provider == "OPENAI_API":
+                return "OpenAI GPT-4o-mini"
+            elif provider == "AWS_BEDROCK_CLAUDE":
+                return "AWS Bedrock Claude 3.5 Sonnet"
+            elif provider == "AMAZON_NOVA_BEDROCK":
+                return "AWS Bedrock Amazon Nova"
+            elif provider == "GPTOSS_20B_BEDROCK":
+                return "AWS Bedrock OpenAI GPT-OSS 20B"
+            return provider
+
+        available_list = []
+        for m in models:
+            available_list.append({
+                "name": m.get("name"),
+                "active": m.get("active", False),
+                "friendly_name": get_friendly_name(m.get("name"), gemini_model)
+            })
+
+        active_model_name = get_friendly_name(active_provider, gemini_model)
+
+        return {
+            "active_provider": active_provider,
+            "active_model_name": active_model_name,
+            "available_models": available_list
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading LLM status: {str(e)}")
+
+

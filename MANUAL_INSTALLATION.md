@@ -161,12 +161,19 @@ python seed_data.py
 
 ### B. LLM Transition (Google Gemini ──► AWS Bedrock Claude Sonnet)
 
-The application architecture uses LangChain and contains code structures prepared to instantiate Bedrock endpoints via `langchain_community.chat_models.BedrockChat`.
+Modern LangChain integrations have moved AWS Bedrock support out of the legacy `langchain-community` package and into a dedicated partner package called **`langchain-aws`**. This package natively implements the latest AWS APIs (such as the Anthropic Claude Messages API) and offers superior performance.
 
 To switch the active model pipeline to **AWS Bedrock Claude Sonnet (us-east-1)**, follow these steps:
 
-#### Step 1: Update Configuration Profile (`backend/llm_config.yaml`)
-Disable Gemini and declare a target Bedrock configuration profile:
+#### Step 1: Install partner package
+Install the AWS Bedrock integration library in your virtual environment:
+```bash
+pip install langchain-aws
+```
+*(Alternatively, append `langchain-aws>=0.1.0` to your `backend/requirements.txt` file and run `pip install -r requirements.txt`).*
+
+#### Step 2: Update Configuration Profile (`backend/llm_config.yaml`)
+Disable Gemini and activate Bedrock:
 ```yaml
 # backend/llm_config.yaml
 gemini_model: "gemini-2.5-flash-lite"
@@ -180,25 +187,31 @@ models:
     active: true
 ```
 
-#### Step 2: Inject Provider Initialization (`backend/app/agent.py`)
-Add the authentication and constructor logic for `AWS_BEDROCK_CLAUDE` inside the model builder function.
+#### Step 3: Inject Provider Initialization (`backend/app/agent.py`)
+Add the import and constructor logic for `AWS_BEDROCK_CLAUDE` inside the model builder function.
 
-1. **Locate the constructor**:
-   In `backend/app/agent.py`, locate the function `initialize_active_language_model()`.
-2. **Add the Bedrock Clause**:
-   Implement the initialization code block to instantiate the Bedrock client using the LangChain SDK (without modifying the file directly, this shows where to place it):
+1. **Locate the constructor file**:
+   Open [agent.py](file:///c:/Users/Roni/Documents/GitHub/talk-to-data/backend/app/agent.py) and locate the helper function `initialize_active_language_model()`.
+2. **Add the import**:
+   At the top of the file, import the native ChatBedrock wrapper:
+   ```python
+   from langchain_aws import ChatBedrock
+   ```
+3. **Add the Bedrock Clause**:
+   Implement the constructor branch to instantiate the Bedrock client (this code example shows how to configure it):
    ```python
    # In backend/app/agent.py inside initialize_active_language_model():
    elif target_llm == "AWS_BEDROCK_CLAUDE":
-       # Checks env variables for AWS credentials
-       return BedrockChat(
+       # Automatically loads credentials from environment variables (.env)
+       return ChatBedrock(
            model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
            region_name="us-east-1",
            model_kwargs={"temperature": 0.0}
        )
    ```
 
-#### Step 3: Configure AWS Credentials in `.env`
+
+#### Step 4: Configure AWS Credentials in `.env`
 Add AWS authentication environment variables to the backend environment configurations:
 ```env
 # AWS IAM Session Access Keys

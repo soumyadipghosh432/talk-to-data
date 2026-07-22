@@ -90,12 +90,15 @@ When a user submits a prompt, it triggers `run_agent_pipeline(...)`, which execu
 Node 6: AI Synthesis ──► Node 7: Telemetry Logger ──► [Formatted UI Bubble]
 ```
 
+### Global Response Sanitizer:
+All LLM output channels are globally processed using `clean_llm_response(text)`. This helper uses regex filters to strip XML-style blocks (like `<reasoning>`, `<thought>`, `<thinking>`) outputted by reasoning models (like Gemini 2.5 or Bedrock Claude). This protects logs, tables, and validator structures from receiving false-positive security exceptions.
+
 ### Step-by-Step Logic Flow:
 
 #### Node 1: Guardrail Inspection (`guardrail_node`)
 * **Purpose**: Prevents irrelevant, abusive, or out-of-scope queries.
 * **Context Loading**: Loads the active user's prompt alongside the **Conversation History** (up to 300 characters of recent turns) to make the guardrail context-aware. This ensures follow-up prompts are not blocked.
-* **Result**: If the model finds the question out of scope, it halts the graph, sets `status` to `GUARDRAIL_DENIED`, and returns a polite rejection template.
+* **Result**: Sanitizes the response using `clean_llm_response`. If the model finds the question out of scope, it halts the graph, sets `status` to `GUARDRAIL_DENIED`, and returns a polite rejection template.
 
 #### Node 2: RBAC Prompt Injection (`rbac_node`)
 * **Purpose**: Enforces data isolation constraints based on mapped user roles.
@@ -104,13 +107,14 @@ Node 6: AI Synthesis ──► Node 7: Telemetry Logger ──► [Formatted UI 
 
 #### Node 3: Text-to-SQL Generation (`text_to_sql_node`)
 * **Purpose**: Translates the natural language prompt into a valid PostgreSQL SELECT query.
-* **YAML Model Selector**: Loads the active Gemini model name (e.g. `gemini-2.5-flash-lite`) from `llm_config.yaml`.
-* **Ordinal Entity Resolution**: The prompt instructs the model to resolve ordinals (e.g. *"third one"*) back to the **primary listing entity** of the conversation history (e.g. `orders`) instead of carrying over sub-query targets (e.g. `customers`).
+* **YAML Model Selector**: Loads the active Gemini/Bedrock model name from `llm_config.yaml`.
+* **Ordinal Entity Resolution**: The prompt instructs the model to resolve ordinals (e.g. *"third one"*) back to the **primary listing entity** of the conversation history (e.g. `orders`).
+* **Sorting Context Preservation**: When the user requests a row offset (e.g. *"details for the 4th order"*), the generator is instructed to inherit the exact `ORDER BY`, `WHERE` constraints, and table joins of the preceding query.
 * **RBAC Constraints**: The model is instructed to append the RBAC constraints (e.g., `WHERE geographic_region = 'US'`) to all matching queries. If a user asks to query a forbidden region, the node outputs `SECURITY_VIOLATION`.
 
 #### Node 4: Strict SQL Validation (`sql_validation_node`)
 * **Purpose**: Evaluates structural syntax safety before database execution.
-* **SELECT Enforcement**: Validates that the generated query is exclusively a `SELECT` statement using regex matches. If write commands (`INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`) are found, it sets the status to `SQL_ERROR` and halts execution.
+* **SELECT or WITH Enforcement**: Validates that the generated query is exclusively a read-only query starting with either `SELECT` or `WITH` (allowing Common Table Expressions) using regex matches. If write commands (`INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`) are found, it sets the status to `SQL_ERROR` and halts execution.
 * **Violation Capture**: If the SQL generator output was `SECURITY_VIOLATION`, it triggers a secure access-denied response.
 
 #### Node 5: Engine Execution (`execute_sql_node`)
@@ -119,6 +123,7 @@ Node 6: AI Synthesis ──► Node 7: Telemetry Logger ──► [Formatted UI 
 
 #### Node 6: Comprehensive Synthesis (`synthesis_node`)
 * **Purpose**: Translates the dataset back into human-readable answers.
+* **Response Sanitization**: Sanitizes the response using `clean_llm_response` to strip reasoning logs.
 * **Prompt Engineering**:
   * **Hides raw SQL** from the text block (the SQL is displayed exclusively in the UI drawer).
   * **Omits greeting prefixes** (like *"Hello!"*, *"Hi!"*), going straight to the analytical answer.
@@ -155,7 +160,7 @@ def admin_get_analytics(current_admin: User = Depends(get_current_admin), db: Se
     prompt_tokens = db.execute(text("SELECT SUM(prompt_tokens) FROM execution_log")).scalar() or 0
     completion_tokens = db.execute(text("SELECT SUM(completion_tokens) FROM execution_log")).scalar() or 0
     
-    # Recent Logs (fetches last 10 logs)
+    # Recent Logs (fetches last 200 logs)
     # Returns values formatted as JSON
 ```
 
@@ -168,3 +173,13 @@ The export action compiles conversation transcript lists into a downloadable PDF
 * **Flowable Table Structure**: Uses ReportLab `Table` layouts with explicit column widths to prevent overlapping text boundaries.
 * **Horizontal Independent Scrolling**: Tables wrap content dynamically and handle pagination across pages automatically.
 * **Header & Styling Rules**: Renders headers on page 2+ showing the chat title and username. Applies custom paragraph styles for user questions and AI answers.
+
+---
+
+## ⚙️ 7. Admin Settings Layout & LLM Configuration Routing
+
+The frontend Admin Dashboard is organized into four separate, modular sub-tabs:
+1. **Analytics Dashboard**: Performance aggregate stats, charts, query execution log telemetry (showing up to 200 logs, 20 rows per page), and Excel-compatible CSV exports.
+2. **RBAC Settings**: Mapped roles tables (with search index), and forms to create or associate permissions with accounts.
+3. **Data Model View**: Interactive visual schema ER diagram (zoom-in/out, drag-to-pan) dynamically generated from `/api/v1/admin/schema`.
+4. **Model Settings**: Read-only display of the active connected LLM pipeline and status indicators showing which providers (Gemini, Bedrock, OpenAI) are available/activated in `llm_config.yaml`. Loaded dynamically from the `/api/v1/chat/llm-status` endpoint.

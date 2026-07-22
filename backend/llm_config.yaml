@@ -13,8 +13,11 @@ models:
   - name: "OPENAI_API"
     active: false
   - name: "GOOGLE_GEMINI_API"
-    active: true
+    active: false
   - name: "AMAZON_NOVA_BEDROCK"
     active: false
   - name: "GPTOSS_20B_BEDROCK"
+    active: true
+  - name: "AWS_BEDROCK_CLAUDE"
     active: false
+
